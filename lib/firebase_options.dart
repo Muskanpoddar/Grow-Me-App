@@ -75,6 +75,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '228418977294',
     projectId: 'growme-1',
     storageBucket: 'growme-1.firebasestorage.app',
+    iosClientId: '228418977294-cqdql3obvuq4fnhcilpqri8kq866ntp6.apps.googleusercontent.com',
     iosBundleId: 'com.example.growme',
   );
 

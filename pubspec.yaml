@@ -1,6 +1,6 @@
 name: growme
 description: "A new Flutter project."
-publish_to: 'none'
+publish_to: "none"
 version: 0.1.0
 
 environment:
@@ -12,6 +12,9 @@ dependencies:
   cloud_firestore: ^6.1.0
   firebase_auth: ^6.1.2
   firebase_core: ^4.2.1
+  firebase_storage: ^13.0.4
+  google_sign_in: ^6.1.0
+  image_picker: ^1.0.1
 
 dev_dependencies:
   flutter_test:

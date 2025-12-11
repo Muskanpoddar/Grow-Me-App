@@ -17,12 +17,10 @@ class AuthStateWidget extends StatelessWidget {
           );
         }
 
-        // if user logged in
         if (snapshot.hasData) {
           return const HomeScreen();
         }
 
-        // if user not logged in
         return const AuthScreen();
       },
     );

@@ -1,4 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import 'package:growme/features/auth/data/auth_repository.dart';
+import 'package:growme/features/auth/data/user_repository.dart';
+import 'package:growme/features/auth/data/storage_helper.dart';
+import 'package:growme/features/auth/domain/models/user_model.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -10,6 +18,7 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   bool isLogin = true;
   bool showPassword = false;
+  bool loading = false;
 
   final emailCtrl = TextEditingController();
   final passwordCtrl = TextEditingController();
@@ -26,6 +35,24 @@ class _AuthScreenState extends State<AuthScreen> {
   ];
   List<String> selectedInterests = [];
 
+  final _authRepo = AuthRepository();
+  final _userRepo = UserRepository();
+  final _storageHelper = StorageHelper();
+  final _picker = ImagePicker();
+
+  File? _profileImageFile;
+
+  @override
+  void dispose() {
+    emailCtrl.dispose();
+    passwordCtrl.dispose();
+    nameCtrl.dispose();
+    usernameCtrl.dispose();
+    super.dispose();
+  }
+
+  // ----------------- UI --------------------
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,7 +64,6 @@ class _AuthScreenState extends State<AuthScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 20),
-
               Text(
                 isLogin ? "Welcome back" : "Set Up Your Profile",
                 style: const TextStyle(
@@ -47,20 +73,13 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-
               const SizedBox(height: 25),
-
               _buildToggle(),
-
               const SizedBox(height: 20),
-
               _buildGoogleButton(),
-
               const SizedBox(height: 10),
               const Center(child: Text("or")),
-
               const SizedBox(height: 20),
-
               if (isLogin) _buildLoginFields() else _buildRegisterFields(),
             ],
           ),
@@ -69,9 +88,6 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  // -------------------------
-  // Toggle buttons
-  // -------------------------
   Widget _buildToggle() {
     return Container(
       height: 55,
@@ -148,9 +164,8 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  // -------------------------
-  // LOGIN FIELDS
-  // -------------------------
+  // ---------- LOGIN UI ----------
+
   Widget _buildLoginFields() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,12 +174,10 @@ class _AuthScreenState extends State<AuthScreen> {
         const SizedBox(height: 5),
         _buildTextField(emailCtrl, "Enter your email address"),
         const SizedBox(height: 15),
-
         const Text("Password", style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 5),
         _buildPasswordField(),
         const SizedBox(height: 10),
-
         Align(
           alignment: Alignment.centerRight,
           child: TextButton(
@@ -175,42 +188,46 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
         ),
-
         const SizedBox(height: 20),
         _buildActionButton(),
       ],
     );
   }
 
-  // -------------------------
-  // REGISTER FIELDS
-  // -------------------------
+  // ---------- REGISTER UI ----------
+
   Widget _buildRegisterFields() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 10),
 
+        // profile photo
         Center(
           child: GestureDetector(
-            onTap: () {}, // <-- we will add image picker later
+            onTap: _pickProfileImage,
             child: Container(
               height: 90,
               width: 90,
               decoration: BoxDecoration(
                 color: Colors.green.withOpacity(0.1),
                 shape: BoxShape.circle,
+                image: _profileImageFile != null
+                    ? DecorationImage(
+                        image: FileImage(_profileImageFile!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
               ),
-              child: Icon(
-                Icons.camera_alt,
-                color: Colors.green.shade600,
-                size: 32,
-              ),
+              child: _profileImageFile == null
+                  ? const Icon(Icons.camera_alt, color: Colors.green, size: 30)
+                  : null,
             ),
           ),
         ),
 
         const SizedBox(height: 20),
+
         const Text("Full Name", style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 5),
         _buildTextField(nameCtrl, "e.g. Alex Johnson"),
@@ -236,7 +253,6 @@ class _AuthScreenState extends State<AuthScreen> {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
         const SizedBox(height: 15),
-
         _buildInterests(),
         const SizedBox(height: 30),
 
@@ -245,30 +261,27 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  // -------------------------
-  // Google login button
-  // -------------------------
   Widget _buildGoogleButton() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-      decoration: BoxDecoration(
-        color: Colors.green.withOpacity(.1),
-        borderRadius: BorderRadius.circular(25),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.g_mobiledata, color: Colors.black),
-          SizedBox(width: 10),
-          Text("Sign in with Google"),
-        ],
+    return InkWell(
+      onTap: _handleGoogleSignIn,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(.1),
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(Icons.g_mobiledata, color: Colors.black),
+            SizedBox(width: 10),
+            Text("Sign in with Google"),
+          ],
+        ),
       ),
     );
   }
 
-  // -------------------------
-  // Interest chips
-  // -------------------------
   Widget _buildInterests() {
     return Wrap(
       spacing: 10,
@@ -300,9 +313,6 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  // -------------------------
-  // Normal text field
-  // -------------------------
   Widget _buildTextField(TextEditingController c, String hint) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -317,9 +327,6 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  // -------------------------
-  // Password field
-  // -------------------------
   Widget _buildPasswordField() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -345,29 +352,131 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  // -------------------------
-  // Login/Register button
-  // -------------------------
   Widget _buildActionButton() {
     return GestureDetector(
-      onTap: () {},
+      onTap: loading
+          ? null
+          : () {
+              if (isLogin) {
+                _handleLogin();
+              } else {
+                _handleRegister();
+              }
+            },
       child: Container(
         height: 55,
         decoration: BoxDecoration(
-          color: Colors.green,
+          color: loading ? Colors.green.withOpacity(0.5) : Colors.green,
           borderRadius: BorderRadius.circular(30),
         ),
         child: Center(
-          child: Text(
-            isLogin ? "Login" : "Create Account",
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          child: loading
+              ? const CircularProgressIndicator(color: Colors.white)
+              : Text(
+                  isLogin ? "Login" : "Create Account",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
         ),
       ),
     );
+  }
+
+  // --------------- LOGIC ---------------
+
+  void _showError(Object e) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(e.toString())));
+  }
+
+  Future<void> _pickProfileImage() async {
+    final XFile? picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 75,
+    );
+    if (picked != null) {
+      setState(() => _profileImageFile = File(picked.path));
+    }
+  }
+
+  Future<void> _handleLogin() async {
+    try {
+      setState(() => loading = true);
+      await _authRepo.signInWithEmail(
+        emailCtrl.text.trim(),
+        passwordCtrl.text.trim(),
+      );
+      // AuthStateWidget will move to Home automatically
+    } catch (e) {
+      _showError(e);
+    } finally {
+      setState(() => loading = false);
+    }
+  }
+
+  Future<void> _handleRegister() async {
+    try {
+      setState(() => loading = true);
+
+      final user = await _authRepo.signUpWithEmail(
+        emailCtrl.text.trim(),
+        passwordCtrl.text.trim(),
+      );
+      if (user == null) return;
+
+      String? photoUrl;
+      if (_profileImageFile != null) {
+        photoUrl = await _storageHelper.uploadProfileImage(
+          user.uid,
+          _profileImageFile!,
+        );
+      }
+
+      final appUser = AppUser(
+        uid: user.uid,
+        email: emailCtrl.text.trim(),
+        name: nameCtrl.text.trim(),
+        username: usernameCtrl.text.trim(),
+        photoUrl: photoUrl,
+        interests: selectedInterests,
+      );
+
+      await _userRepo.createUser(appUser);
+      // logged in already -> stream will go to Home
+    } catch (e) {
+      _showError(e);
+    } finally {
+      setState(() => loading = false);
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      setState(() => loading = true);
+      final user = await _authRepo.signInWithGoogle();
+      if (user == null) return;
+
+      // check if user doc exists; if not, create minimal profile
+      final existing = await _userRepo.getUser(user.uid);
+      if (existing == null) {
+        final appUser = AppUser(
+          uid: user.uid,
+          email: user.email ?? '',
+          name: user.displayName ?? '',
+          username: user.email?.split('@').first ?? '',
+          photoUrl: user.photoURL,
+          interests: [],
+        );
+        await _userRepo.createUser(appUser);
+      }
+    } catch (e) {
+      _showError(e);
+    } finally {
+      setState(() => loading = false);
+    }
   }
 }

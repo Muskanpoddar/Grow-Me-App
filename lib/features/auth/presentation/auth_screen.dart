@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -25,7 +24,10 @@ class _AuthScreenState extends State<AuthScreen> {
   final nameCtrl = TextEditingController();
   final usernameCtrl = TextEditingController();
 
-  final interests = [
+  final ImagePicker _picker = ImagePicker();
+  File? _profileImageFile;
+
+  final List<String> interests = [
     "Fitness",
     "Learning",
     "Career",
@@ -38,9 +40,6 @@ class _AuthScreenState extends State<AuthScreen> {
   final _authRepo = AuthRepository();
   final _userRepo = UserRepository();
   final _storageHelper = StorageHelper();
-  final _picker = ImagePicker();
-
-  File? _profileImageFile;
 
   @override
   void dispose() {
@@ -50,8 +49,6 @@ class _AuthScreenState extends State<AuthScreen> {
     usernameCtrl.dispose();
     super.dispose();
   }
-
-  // ----------------- UI --------------------
 
   @override
   Widget build(BuildContext context) {
@@ -69,24 +66,31 @@ class _AuthScreenState extends State<AuthScreen> {
                 style: const TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
                 ),
                 textAlign: TextAlign.center,
               ),
+
               const SizedBox(height: 25),
+
               _buildToggle(),
               const SizedBox(height: 20),
+
               _buildGoogleButton(),
               const SizedBox(height: 10),
               const Center(child: Text("or")),
               const SizedBox(height: 20),
-              if (isLogin) _buildLoginFields() else _buildRegisterFields(),
+
+              isLogin ? _buildLoginFields() : _buildRegisterFields(),
             ],
           ),
         ),
       ),
     );
   }
+
+  // ----------------------------------------------------
+  // UI
+  // ----------------------------------------------------
 
   Widget _buildToggle() {
     return Container(
@@ -99,22 +103,16 @@ class _AuthScreenState extends State<AuthScreen> {
         children: [
           Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => isLogin = true),
+              onTap: () {
+                if (!mounted) return;
+                setState(() => isLogin = true);
+              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: isLogin ? Colors.white : Colors.transparent,
                   borderRadius: BorderRadius.circular(28),
-                  boxShadow: isLogin
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ]
-                      : [],
                 ),
                 child: Center(
                   child: Text(
@@ -130,22 +128,16 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           Expanded(
             child: GestureDetector(
-              onTap: () => setState(() => isLogin = false),
+              onTap: () {
+                if (!mounted) return;
+                setState(() => isLogin = false);
+              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: !isLogin ? Colors.white : Colors.transparent,
                   borderRadius: BorderRadius.circular(28),
-                  boxShadow: !isLogin
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ]
-                      : [],
                 ),
                 child: Center(
                   child: Text(
@@ -164,19 +156,18 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  // ---------- LOGIN UI ----------
-
   Widget _buildLoginFields() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text("Email", style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 5),
-        _buildTextField(emailCtrl, "Enter your email address"),
+        _buildTextField(emailCtrl, "Enter your email"),
+
         const SizedBox(height: 15),
         const Text("Password", style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 5),
         _buildPasswordField(),
+
         const SizedBox(height: 10),
         Align(
           alignment: Alignment.centerRight,
@@ -188,13 +179,12 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
         ),
+
         const SizedBox(height: 20),
         _buildActionButton(),
       ],
     );
   }
-
-  // ---------- REGISTER UI ----------
 
   Widget _buildRegisterFields() {
     return Column(
@@ -202,7 +192,6 @@ class _AuthScreenState extends State<AuthScreen> {
       children: [
         const SizedBox(height: 10),
 
-        // profile photo
         Center(
           child: GestureDetector(
             onTap: _pickProfileImage,
@@ -210,8 +199,8 @@ class _AuthScreenState extends State<AuthScreen> {
               height: 90,
               width: 90,
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
                 shape: BoxShape.circle,
+                color: Colors.green.withOpacity(0.1),
                 image: _profileImageFile != null
                     ? DecorationImage(
                         image: FileImage(_profileImageFile!),
@@ -220,42 +209,34 @@ class _AuthScreenState extends State<AuthScreen> {
                     : null,
               ),
               child: _profileImageFile == null
-                  ? const Icon(Icons.camera_alt, color: Colors.green, size: 30)
+                  ? const Icon(Icons.camera_alt, color: Colors.green, size: 28)
                   : null,
             ),
           ),
         ),
 
         const SizedBox(height: 20),
-
         const Text("Full Name", style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 5),
         _buildTextField(nameCtrl, "e.g. Alex Johnson"),
-        const SizedBox(height: 15),
 
+        const SizedBox(height: 15),
         const Text("Username", style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 5),
         _buildTextField(usernameCtrl, "e.g. alexj"),
-        const SizedBox(height: 15),
 
+        const SizedBox(height: 15),
         const Text("Email", style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 5),
-        _buildTextField(emailCtrl, "Enter your email address"),
-        const SizedBox(height: 15),
+        _buildTextField(emailCtrl, "Enter your email"),
 
+        const SizedBox(height: 15),
         const Text("Password", style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 5),
         _buildPasswordField(),
-        const SizedBox(height: 25),
 
-        const Text(
-          "What are your interests?",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        const SizedBox(height: 15),
+        const SizedBox(height: 20),
+        const Text("Interests", style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 10),
         _buildInterests(),
-        const SizedBox(height: 30),
 
+        const SizedBox(height: 30),
         _buildActionButton(),
       ],
     );
@@ -265,15 +246,15 @@ class _AuthScreenState extends State<AuthScreen> {
     return InkWell(
       onTap: _handleGoogleSignIn,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        padding: const EdgeInsets.symmetric(vertical: 15),
         decoration: BoxDecoration(
           color: Colors.green.withOpacity(.1),
           borderRadius: BorderRadius.circular(25),
         ),
-        child: Row(
+        child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.g_mobiledata, color: Colors.black),
+          children: [
+            Icon(Icons.g_mobiledata, size: 30, color: Colors.black),
             SizedBox(width: 10),
             Text("Sign in with Google"),
           ],
@@ -286,12 +267,15 @@ class _AuthScreenState extends State<AuthScreen> {
     return Wrap(
       spacing: 10,
       runSpacing: 10,
-      children: interests.map((i) {
-        final selected = selectedInterests.contains(i);
+      children: interests.map((interest) {
+        final selected = selectedInterests.contains(interest);
         return GestureDetector(
           onTap: () {
+            if (!mounted) return;
             setState(() {
-              selected ? selectedInterests.remove(i) : selectedInterests.add(i);
+              selected
+                  ? selectedInterests.remove(interest)
+                  : selectedInterests.add(interest);
             });
           },
           child: Container(
@@ -301,7 +285,7 @@ class _AuthScreenState extends State<AuthScreen> {
               borderRadius: BorderRadius.circular(25),
             ),
             child: Text(
-              i,
+              interest,
               style: TextStyle(
                 color: selected ? Colors.white : Colors.green,
                 fontWeight: FontWeight.bold,
@@ -322,7 +306,7 @@ class _AuthScreenState extends State<AuthScreen> {
       ),
       child: TextField(
         controller: c,
-        decoration: InputDecoration(border: InputBorder.none, hintText: hint),
+        decoration: InputDecoration(hintText: hint, border: InputBorder.none),
       ),
     );
   }
@@ -338,14 +322,17 @@ class _AuthScreenState extends State<AuthScreen> {
         controller: passwordCtrl,
         obscureText: !showPassword,
         decoration: InputDecoration(
-          border: InputBorder.none,
           hintText: "Enter your password",
+          border: InputBorder.none,
           suffixIcon: IconButton(
             icon: Icon(
               showPassword ? Icons.visibility : Icons.visibility_off,
               color: Colors.green,
             ),
-            onPressed: () => setState(() => showPassword = !showPassword),
+            onPressed: () {
+              if (!mounted) return;
+              setState(() => showPassword = !showPassword);
+            },
           ),
         ),
       ),
@@ -354,40 +341,33 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _buildActionButton() {
     return GestureDetector(
-      onTap: loading
-          ? null
-          : () {
-              if (isLogin) {
-                _handleLogin();
-              } else {
-                _handleRegister();
-              }
-            },
+      onTap: isLogin ? _handleLogin : _handleRegister,
       child: Container(
         height: 55,
         decoration: BoxDecoration(
-          color: loading ? Colors.green.withOpacity(0.5) : Colors.green,
+          color: Colors.green,
           borderRadius: BorderRadius.circular(30),
         ),
         child: Center(
-          child: loading
-              ? const CircularProgressIndicator(color: Colors.white)
-              : Text(
-                  isLogin ? "Login" : "Create Account",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+          child: Text(
+            isLogin ? "Login" : "Create Account",
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
     );
   }
 
-  // --------------- LOGIC ---------------
+  // ----------------------------------------------------
+  // LOGIC (with mounted checks)
+  // ----------------------------------------------------
 
   void _showError(Object e) {
+    if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -398,34 +378,42 @@ class _AuthScreenState extends State<AuthScreen> {
       source: ImageSource.gallery,
       imageQuality: 75,
     );
+
+    if (!mounted) return;
+
     if (picked != null) {
       setState(() => _profileImageFile = File(picked.path));
     }
   }
 
   Future<void> _handleLogin() async {
+    if (!mounted) return;
+    setState(() => loading = true);
+
     try {
-      setState(() => loading = true);
       await _authRepo.signInWithEmail(
         emailCtrl.text.trim(),
         passwordCtrl.text.trim(),
       );
-      // AuthStateWidget will move to Home automatically
     } catch (e) {
+      if (!mounted) return;
       _showError(e);
     } finally {
+      if (!mounted) return;
       setState(() => loading = false);
     }
   }
 
   Future<void> _handleRegister() async {
-    try {
-      setState(() => loading = true);
+    if (!mounted) return;
+    setState(() => loading = true);
 
+    try {
       final user = await _authRepo.signUpWithEmail(
         emailCtrl.text.trim(),
         passwordCtrl.text.trim(),
       );
+
       if (user == null) return;
 
       String? photoUrl;
@@ -436,46 +424,53 @@ class _AuthScreenState extends State<AuthScreen> {
         );
       }
 
+      if (!mounted) return;
       final appUser = AppUser(
         uid: user.uid,
-        email: emailCtrl.text.trim(),
         name: nameCtrl.text.trim(),
         username: usernameCtrl.text.trim(),
+        email: emailCtrl.text.trim(),
         photoUrl: photoUrl,
         interests: selectedInterests,
       );
 
       await _userRepo.createUser(appUser);
-      // logged in already -> stream will go to Home
     } catch (e) {
+      if (!mounted) return;
       _showError(e);
     } finally {
+      if (!mounted) return;
       setState(() => loading = false);
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
+    if (!mounted) return;
+    setState(() => loading = true);
+
     try {
-      setState(() => loading = true);
       final user = await _authRepo.signInWithGoogle();
       if (user == null) return;
 
-      // check if user doc exists; if not, create minimal profile
       final existing = await _userRepo.getUser(user.uid);
+
       if (existing == null) {
-        final appUser = AppUser(
-          uid: user.uid,
-          email: user.email ?? '',
-          name: user.displayName ?? '',
-          username: user.email?.split('@').first ?? '',
-          photoUrl: user.photoURL,
-          interests: [],
+        await _userRepo.createUser(
+          AppUser(
+            uid: user.uid,
+            name: user.displayName ?? "",
+            username: user.email?.split('@').first ?? "",
+            email: user.email ?? "",
+            photoUrl: user.photoURL,
+            interests: [],
+          ),
         );
-        await _userRepo.createUser(appUser);
       }
     } catch (e) {
+      if (!mounted) return;
       _showError(e);
     } finally {
+      if (!mounted) return;
       setState(() => loading = false);
     }
   }

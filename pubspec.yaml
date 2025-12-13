@@ -15,6 +15,8 @@ dependencies:
   firebase_storage: ^13.0.4
   google_sign_in: ^6.1.0
   image_picker: ^1.0.1
+  cloudinary_public: ^0.23.1
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:

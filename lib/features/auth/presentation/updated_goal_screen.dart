@@ -8,7 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../data/goal_repository.dart';
 
 class CreateGoalScreen extends StatefulWidget {
-  const CreateGoalScreen({Key? key}) : super(key: key);
+  const CreateGoalScreen({super.key});
 
   @override
   State<CreateGoalScreen> createState() => _CreateGoalScreenState();
@@ -113,7 +113,7 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
 
       setState(() => _loading = false);
 
-      Navigator.pushReplacementNamed(context, '/goalSummary', arguments: goal);
+      Navigator.pushNamed(context, '/goalSummary', arguments: goal);
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
@@ -219,6 +219,7 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
     super.dispose();
   }
 
+  @override
   Widget build(BuildContext context) {
     final softGreen = const Color(0xffEAF8ED);
     final mainGreen = const Color(0xff00CC66);

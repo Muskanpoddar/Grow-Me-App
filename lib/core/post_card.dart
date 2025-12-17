@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:growme/core/post_model.dart';
 import 'package:growme/features/auth/data/post_repository.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class PostCard extends StatelessWidget {
   final PostModel post;
   final String currentUserId;
   final PostRepository repo = PostRepository();
 
-  PostCard({required this.post, required this.currentUserId, Key? key}) : super(key: key);
+  PostCard({required this.post, required this.currentUserId, super.key});
 
   @override
   Widget build(BuildContext context) {

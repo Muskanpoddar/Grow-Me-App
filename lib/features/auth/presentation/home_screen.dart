@@ -4,6 +4,7 @@ import 'package:growme/core/post_card.dart';
 import 'package:growme/core/post_model.dart';
 import 'package:growme/features/auth/data/post_repository.dart';
 import 'package:growme/features/auth/presentation/create_post_screen.dart';
+import 'package:growme/features/auth/presentation/setting_screen.dart';
 import 'package:growme/features/auth/presentation/updated_goal_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const _GoalsScreen(), // index 1: goals
     const _ProgressScreen(), // index 2: progress
     const _CommunityScreen(), // index 3: community
+    const SettingsScreen(), // index 4: settings
   ];
 
   @override
@@ -53,6 +55,10 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Progress',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Community'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
         ],
       ),
     );
@@ -60,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HomeFeed extends StatelessWidget {
-  const _HomeFeed({super.key});
+  const _HomeFeed();
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +128,7 @@ class _HomeFeed extends StatelessWidget {
 
 // Simple Goals placeholder - tapping the top button navigates to the UpdateGoal screen
 class _GoalsScreen extends StatelessWidget {
-  const _GoalsScreen({super.key});
+  const _GoalsScreen();
 
   @override
   Widget build(BuildContext context) {
@@ -169,14 +175,14 @@ class _GoalsScreen extends StatelessWidget {
 
 // Minimal Progress and Community screens (replace with full UIs later)
 class _ProgressScreen extends StatelessWidget {
-  const _ProgressScreen({super.key});
+  const _ProgressScreen();
   @override
   Widget build(BuildContext c) =>
       const Center(child: Text('Progress screen (placeholder)'));
 }
 
 class _CommunityScreen extends StatelessWidget {
-  const _CommunityScreen({super.key});
+  const _CommunityScreen();
   @override
   Widget build(BuildContext c) =>
       const Center(child: Text('Community screen (placeholder)'));

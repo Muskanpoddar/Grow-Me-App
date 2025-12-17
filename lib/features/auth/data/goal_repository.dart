@@ -8,7 +8,9 @@ class GoalRepository {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
   final CloudinaryService _cloudinary = CloudinaryService();
-  final CollectionReference goalsRef = FirebaseFirestore.instance.collection('goals');
+  final CollectionReference goalsRef = FirebaseFirestore.instance.collection(
+    'goals',
+  );
 
   Stream<List<GoalModel>> streamGoalsForUser(String uid) {
     return goalsRef
@@ -26,7 +28,10 @@ class GoalRepository {
     final q = await goalsRef
         .where('userId', isEqualTo: uid)
         .where('status', isEqualTo: 'active')
-        .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+        .where(
+          'createdAt',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+        )
         .where('createdAt', isLessThan: Timestamp.fromDate(endOfDay))
         .get();
     return q.docs.isNotEmpty;

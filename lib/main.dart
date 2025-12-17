@@ -6,6 +6,7 @@ import 'package:growme/features/auth/presentation/create_post_screen.dart';
 import 'package:growme/features/auth/presentation/goal_Screen.dart';
 import 'package:growme/features/auth/presentation/goal_summary_screen.dart';
 import 'package:growme/features/auth/presentation/home_screen.dart';
+import 'package:growme/features/auth/presentation/setting_screen.dart';
 import 'package:growme/features/auth/presentation/updated_goal_screen.dart';
 import 'firebase_options.dart';
 
@@ -38,6 +39,7 @@ class MyApp extends StatelessWidget {
         '/createGoal': (_) => const CreateGoalScreen(),
         '/goalSummary': (_) => const GoalSummaryScreen(),
         '/goals': (_) => GoalsScreen(),
+        '/settings': (_) => const SettingsScreen(),
       },
     );
   }

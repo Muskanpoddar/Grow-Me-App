@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:growme/core/goal_model.dart';
 
 class GoalSummaryScreen extends StatelessWidget {
-  const GoalSummaryScreen({Key? key}) : super(key: key);
+  const GoalSummaryScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +80,8 @@ class GoalSummaryScreen extends StatelessWidget {
                 ),
                 onPressed: () {
                   // pop back to goals screen; we used pushReplacement earlier so just navigate to goals route
-                  Navigator.pushReplacementNamed(context, '/goals');
+                  Navigator.pop(context); // back to CreateGoal
+                  Navigator.pop(context); // back to Goals
                 },
                 child: const Text(
                   'Continue',

@@ -1,14 +1,15 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:growme/core/post_card.dart';
 import 'package:growme/core/post_model.dart';
 import 'package:growme/features/auth/data/post_repository.dart';
 import 'package:growme/features/auth/presentation/create_post_screen.dart';
+import 'package:growme/features/auth/presentation/progress_screen.dart';
 import 'package:growme/features/auth/presentation/setting_screen.dart';
 import 'package:growme/features/auth/presentation/updated_goal_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String userId;
+  const HomeScreen({super.key, required this.userId});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -20,28 +21,42 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
   // pages for bottom nav (Goals and others are placeholders here)
-  final List<Widget> _pages = [
-    const _HomeFeed(), // index 0: home feed
-    const _GoalsScreen(), // index 1: goals
-    const _ProgressScreen(), // index 2: progress
-    const _CommunityScreen(), // index 3: community
-    const SettingsScreen(), // index 4: settings
+  List<Widget> get _pages => [
+    _HomeFeed(userId: widget.userId),
+    const _GoalsScreen(),
+    const ProgressScreen(),
+    const _CommunityScreen(),
+    const SettingsScreen(),
   ];
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.userId != widget.userId) {
+      setState(() {
+        _currentIndex = 0;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: _pages[_currentIndex],
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xff00CC66),
-        child: const Icon(Icons.add, color: Colors.black),
-        onPressed: () async {
-          // push full screen create post (A2: hide bottom nav while creating)
-          await Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const CreatePostScreen()));
-        },
-      ),
+      floatingActionButton: _currentIndex == 0
+          ? FloatingActionButton(
+              backgroundColor: const Color(0xff00CC66),
+              child: const Icon(Icons.add, color: Colors.black),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreatePostScreen()),
+                );
+              },
+            )
+          : null,
+
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         selectedItemColor: const Color(0xff00CC66),
@@ -66,12 +81,14 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HomeFeed extends StatelessWidget {
-  const _HomeFeed();
+  final String userId;
+
+  const _HomeFeed({required this.userId});
 
   @override
   Widget build(BuildContext context) {
     final repo = PostRepository();
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
     return SafeArea(
       child: Column(
         children: [
@@ -79,11 +96,12 @@ class _HomeFeed extends StatelessWidget {
           _buildHeader(),
           Expanded(
             child: StreamBuilder<List<PostModel>>(
-              stream: repo.streamPosts(),
+              stream: repo.streamPosts(userId), // ✅ FIXED
               builder: (context, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
+
                 final posts = snap.data ?? [];
                 if (posts.isEmpty) {
                   return const Center(
@@ -93,6 +111,7 @@ class _HomeFeed extends StatelessWidget {
                     ),
                   );
                 }
+
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 15,
@@ -100,7 +119,10 @@ class _HomeFeed extends StatelessWidget {
                   ),
                   itemCount: posts.length,
                   itemBuilder: (context, index) {
-                    return PostCard(post: posts[index], currentUserId: uid);
+                    return PostCard(
+                      post: posts[index],
+                      currentUserId: userId, // ✅ use passed userId
+                    );
                   },
                 );
               },
@@ -110,20 +132,20 @@ class _HomeFeed extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildHeader() {
-    return Row(
-      children: const [
-        SizedBox(width: 15),
-        Icon(Icons.directions_run_rounded, size: 30, color: Color(0xff00CC66)),
-        SizedBox(width: 10),
-        Text(
-          "Home Feed",
-          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
-  }
+Widget _buildHeader() {
+  return Row(
+    children: const [
+      SizedBox(width: 15),
+      Icon(Icons.directions_run_rounded, size: 30, color: Color(0xff00CC66)),
+      SizedBox(width: 10),
+      Text(
+        "Home Feed",
+        style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+      ),
+    ],
+  );
 }
 
 // Simple Goals placeholder - tapping the top button navigates to the UpdateGoal screen
@@ -171,14 +193,6 @@ class _GoalsScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-// Minimal Progress and Community screens (replace with full UIs later)
-class _ProgressScreen extends StatelessWidget {
-  const _ProgressScreen();
-  @override
-  Widget build(BuildContext c) =>
-      const Center(child: Text('Progress screen (placeholder)'));
 }
 
 class _CommunityScreen extends StatelessWidget {

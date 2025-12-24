@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import 'package:growme/features/auth/data/auth_repository.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _loggingOut = false;
+  final AuthRepository _authRepo = AuthRepository();
 
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final _authRepo = AuthRepository();
 
     return Scaffold(
       backgroundColor: const Color(0xfff7faf7),
@@ -51,45 +57,44 @@ class SettingsScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right),
               ],
             ),
           ),
-
-          const SizedBox(height: 24),
-
-          _sectionTitle('ACCOUNT'),
-          _tile(Icons.lock, 'Change Password'),
-          _tile(Icons.link, 'Connected Accounts'),
-
-          const SizedBox(height: 24),
-
-          _sectionTitle('SUPPORT'),
-          _tile(Icons.help_outline, 'Help Center'),
-          _tile(Icons.person_add, 'Invite Friends'),
 
           const SizedBox(height: 30),
 
           // LOGOUT
           GestureDetector(
-            onTap: () async {
-              await _authRepo.logout();
-            },
+            onTap: _loggingOut
+                ? null
+                : () async {
+                    setState(() => _loggingOut = true);
+                    await _authRepo.logout();
+                    // ❌ NO NAVIGATION
+                    // AuthStateWidget will rebuild automatically
+                  },
+
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(
                 color: Colors.red.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Center(
-                child: Text(
-                  'Log Out',
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
+              child: Center(
+                child: _loggingOut
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text(
+                        'Log Out',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
               ),
             ),
           ),
@@ -103,38 +108,6 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _sectionTitle(String t) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        t,
-        style: const TextStyle(
-          color: Colors.black54,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Widget _tile(IconData icon, String title) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.green.withOpacity(0.15),
-          child: Icon(icon, color: Colors.green),
-        ),
-        title: Text(title),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {},
       ),
     );
   }

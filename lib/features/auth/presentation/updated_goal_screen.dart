@@ -9,7 +9,6 @@ import '../data/goal_repository.dart';
 
 class CreateGoalScreen extends StatefulWidget {
   const CreateGoalScreen({super.key});
-
   @override
   State<CreateGoalScreen> createState() => _CreateGoalScreenState();
 }
@@ -20,6 +19,7 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
   final _picker = ImagePicker();
   File? _pickedImage;
   bool _loading = false;
+  bool _isPickingImage = false;
 
   final _goalRepo = GoalRepository();
   final _catRepo = CategoryRepository();
@@ -55,13 +55,25 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
   }
 
   Future<void> _pickImage() async {
-    if (_loading) return; // FIX: prevent interaction while saving
-    final XFile? f = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-    );
-    if (f != null && mounted) {
-      setState(() => _pickedImage = File(f.path));
+    if (_loading || _isPickingImage) return;
+
+    _isPickingImage = true;
+
+    try {
+      final XFile? f = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+
+      if (f != null && mounted) {
+        setState(() {
+          _pickedImage = File(f.path);
+        });
+      }
+    } catch (e) {
+      debugPrint('Image picker error: $e');
+    } finally {
+      _isPickingImage = false;
     }
   }
 

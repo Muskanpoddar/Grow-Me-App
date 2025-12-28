@@ -78,7 +78,7 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
   }
 
   Future<void> _onSetGoalPressed() async {
-    if (_loading) return; // FIX: prevent double submit
+    if (_loading) return;
 
     if (_titleCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(
@@ -98,17 +98,6 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
     setState(() => _loading = true);
 
     try {
-      final has = await _goalRepo.userHasActiveGoalToday(user.uid);
-      if (has) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('You already have an active goal today'),
-          ),
-        );
-        setState(() => _loading = false);
-        return;
-      }
-
       if (!_categories.contains(_selectedCategory)) {
         await _catRepo.addCategoryIfNotExists(_selectedCategory);
       }
@@ -125,6 +114,7 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
 
       setState(() => _loading = false);
 
+      // ✅ THIS IS CORRECT
       Navigator.pushNamed(context, '/goalSummary', arguments: goal);
     } catch (e) {
       if (mounted) {

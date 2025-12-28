@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:growme/core/goal_model.dart';
+import 'package:growme/features/auth/domain/models/goal_model.dart';
+import 'package:growme/features/auth/presentation/home_screen.dart';
 
 class GoalSummaryScreen extends StatelessWidget {
   const GoalSummaryScreen({super.key});
@@ -14,17 +16,17 @@ class GoalSummaryScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
+        title: const Text(
+          'Goal Created',
+          style: TextStyle(color: Colors.black),
+        ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(18.0),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(18),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Goal Created',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 18),
               Card(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -41,23 +43,33 @@ class GoalSummaryScreen extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
+
                       if (goal.imageUrl != null)
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.network(goal.imageUrl!),
+                          child: Image.network(
+                            goal.imageUrl!,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
                         ),
-                      const SizedBox(height: 8),
-                      Text(
-                        goal.description ?? '',
-                        style: const TextStyle(color: Colors.black54),
-                      ),
-                      const SizedBox(height: 8),
+
+                      if (goal.description != null &&
+                          goal.description!.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          goal.description!,
+                          style: const TextStyle(color: Colors.black54),
+                        ),
+                      ],
+
+                      const SizedBox(height: 12),
                       Text(
                         'Category: ${goal.category}',
                         style: const TextStyle(color: Colors.green),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         'Deadline: ${goal.deadline.day}-${goal.deadline.month}-${goal.deadline.year}',
                         style: const TextStyle(color: Colors.green),
@@ -66,28 +78,38 @@ class GoalSummaryScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              const Spacer(),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.greenAccent.shade400,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 14,
-                    horizontal: 36,
+
+              const SizedBox(height: 30),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.greenAccent.shade400,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(40),
+                    ),
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(40),
-                  ),
-                ),
-                onPressed: () {
-                  // pop back to goals screen; we used pushReplacement earlier so just navigate to goals route
-                  Navigator.pop(context); // back to CreateGoal
-                  Navigator.pop(context); // back to Goals
-                },
-                child: const Text(
-                  'Continue',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
+                  onPressed: () {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => HomeScreen(
+                          userId: FirebaseAuth.instance.currentUser!.uid,
+                          initialIndex: 2, // 🔥 Progress tab
+                        ),
+                      ),
+                      (route) => false,
+                    );
+                  },
+
+                  child: const Text(
+                    'Continue',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),

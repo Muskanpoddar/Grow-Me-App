@@ -3,8 +3,8 @@ import 'package:cloudinary_public/cloudinary_public.dart';
 
 class CloudinaryService {
   // Replace with your cloud name and unsigned upload preset
-  final _cloudName = 'dnxr6gqav';
-  final _preset = 'growme_preset';
+  final cloudName = 'dnxr6gqav';
+  final preset = 'growme_preset';
 
   final CloudinaryPublic _cloudinary;
 

@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:growme/core/services/cloudinary_service.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:growme/features/auth/data/auth_repository.dart';
 import 'package:growme/features/auth/data/user_repository.dart';
-import 'package:growme/features/auth/data/storage_helper.dart';
 import 'package:growme/features/auth/domain/models/user_model.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -39,7 +41,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   final _authRepo = AuthRepository();
   final _userRepo = UserRepository();
-  final _storageHelper = StorageHelper();
+  final cloudinaryService = CloudinaryService();
 
   @override
   void dispose() {
@@ -244,7 +246,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _buildGoogleButton() {
     return InkWell(
-      onTap: _handleGoogleSignIn,
+      onTap: loading ? null : _handleGoogleSignIn,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 15),
         decoration: BoxDecoration(
@@ -341,22 +343,24 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _buildActionButton() {
     return GestureDetector(
-      onTap: isLogin ? _handleLogin : _handleRegister,
+      onTap: loading ? null : (isLogin ? _handleLogin : _handleRegister),
       child: Container(
         height: 55,
         decoration: BoxDecoration(
-          color: Colors.green,
+          color: loading ? Colors.green.shade300 : Colors.green,
           borderRadius: BorderRadius.circular(30),
         ),
         child: Center(
-          child: Text(
-            isLogin ? "Login" : "Create Account",
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
+          child: loading
+              ? const CircularProgressIndicator(color: Colors.white)
+              : Text(
+                  isLogin ? "Login" : "Create Account",
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
         ),
       ),
     );
@@ -414,17 +418,16 @@ class _AuthScreenState extends State<AuthScreen> {
         passwordCtrl.text.trim(),
       );
 
-      if (user == null) return;
+      if (user == null) throw Exception("User creation failed");
 
       String? photoUrl;
+
       if (_profileImageFile != null) {
-        photoUrl = await _storageHelper.uploadProfileImage(
-          user.uid,
-          _profileImageFile!,
-        );
+        photoUrl = await cloudinaryService.uploadImage(_profileImageFile!);
       }
 
       if (!mounted) return;
+
       final appUser = AppUser(
         uid: user.uid,
         name: nameCtrl.text.trim(),
@@ -436,6 +439,10 @@ class _AuthScreenState extends State<AuthScreen> {
 
       await _userRepo.createUser(appUser);
     } catch (e) {
+      // 🔥 rollback partially created auth user
+      await FirebaseAuth.instance.currentUser?.delete();
+      await FirebaseAuth.instance.signOut();
+
       if (!mounted) return;
       _showError(e);
     } finally {
@@ -449,8 +456,14 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => loading = true);
 
     try {
+      await GoogleSignIn().signOut();
       final user = await _authRepo.signInWithGoogle();
-      if (user == null) return;
+
+      if (user == null) {
+        if (!mounted) return;
+        setState(() => loading = false);
+        return;
+      }
 
       final existing = await _userRepo.getUser(user.uid);
 

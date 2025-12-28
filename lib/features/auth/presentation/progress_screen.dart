@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import 'package:growme/core/utils/time_filter.dart';
-import 'package:growme/features/auth/data/progress_repository.dart';
+import 'package:growme/features/auth/data/goal_repository.dart';
+import 'package:growme/features/auth/domain/models/goal_model.dart';
+import 'package:growme/features/auth/presentation/weekly_progress_chart.dart';
+import '../data/progress_repository.dart';
 
 class ProgressScreen extends StatefulWidget {
   const ProgressScreen({super.key});
@@ -10,262 +15,420 @@ class ProgressScreen extends StatefulWidget {
   State<ProgressScreen> createState() => _ProgressScreenState();
 }
 
-class _ProgressScreenState extends State<ProgressScreen> {
+class _ProgressScreenState extends State<ProgressScreen>
+    with SingleTickerProviderStateMixin {
+  final _progressRepo = ProgressRepository();
+  final _goalRepo = GoalRepository();
+
   TimeFilter _filter = TimeFilter.week;
-  final repo = ProgressRepository();
+
+  late AnimationController _anim;
+  late Animation<double> _fade;
+
+  @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
+    );
+    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
+    _anim.forward();
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  // ================= STATUS SHEET =================
+  void _showStatusSheet(BuildContext context, GoalModel goal) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "What's your status?",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 18),
+
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.greenAccent,
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                onPressed: () async {
+                  await _goalRepo.completeGoal(goal);
+                  Navigator.pop(context);
+                },
+                child: const Text('Mark done'),
+              ),
+
+              const SizedBox(height: 12),
+
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Still working'),
+              ),
+
+              const SizedBox(height: 12),
+
+              TextButton(
+                onPressed: () async {
+                  await _goalRepo.updateGoalStatus(
+                    goal: goal,
+                    status: 'skipped',
+                  );
+                  Navigator.pop(context);
+                },
+                child: const Text(
+                  'Skip for today',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
     final fromDate = getStartDate(_filter);
 
     return Scaffold(
-      backgroundColor: const Color(0xffF5F8F5),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // HEADER
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                "Progress",
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-            ),
+      backgroundColor: const Color(0xfff7faf7),
+      appBar: AppBar(
+        leading: Icon(
+          Icons.pie_chart_rounded,
+          size: 30,
+          color: Color(0xff00CC66),
+        ),
+        title: const Text(
+          'Progress',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: FadeTransition(
+        opacity: _fade,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ================= STATS =================
+              StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('user_stats')
+                    .doc(uid)
+                    .snapshots(),
+                builder: (_, snap) {
+                  final streak = snap.data?.exists == true
+                      ? (snap.data!.data() as Map<String, dynamic>)['streak'] ??
+                            0
+                      : 0;
 
-            _buildFilter(),
+                  return StreamBuilder<QuerySnapshot>(
+                    stream: _progressRepo.streamProgress(DateTime(2000)),
+                    builder: (_, pSnap) {
+                      final completed = pSnap.data?.docs.length ?? 0;
 
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: repo.streamProgress(fromDate),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Center(child: Text("No progress yet"));
-                  }
-
-                  final docs = snapshot.data!.docs;
-
-                  return _buildContent(docs);
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.local_fire_department,
+                              title: 'Current Streak',
+                              value: '$streak Days',
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.flag,
+                              title: 'Goals Completed',
+                              value: completed.toString(),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  );
                 },
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  // ---------------- FILTER ----------------
-  Widget _buildFilter() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: TimeFilter.values.map((f) {
-          final selected = _filter == f;
-          return ChoiceChip(
-            label: Text(f.name.toUpperCase()),
-            selected: selected,
-            selectedColor: Colors.green,
-            onSelected: (_) => setState(() => _filter = f),
-          );
-        }).toList(),
-      ),
-    );
-  }
+              const SizedBox(height: 18),
 
-  // ---------------- CONTENT ----------------
-  Widget _buildContent(List<QueryDocumentSnapshot> docs) {
-    final Map<String, double> skillTotals = {};
-    final List<Map<String, dynamic>> activities = [];
+              // ================= TODAY GOAL =================
+              StreamBuilder<List<GoalModel>>(
+                stream: _goalRepo.streamGoalsForUser(uid),
+                builder: (_, snap) {
+                  if (!snap.hasData) return const SizedBox();
 
-    for (final d in docs) {
-      final skill = d['skills'] as String;
-      final value = (d['value'] as num).toDouble();
-      final date = (d['createdAt'] as Timestamp).toDate();
+                  final today = DateTime.now();
+                  final goal = snap.data!
+                      .where(
+                        (g) =>
+                            g.status == 'active' &&
+                            _sameDay(g.createdAt.toLocal(), today),
+                      )
+                      .cast<GoalModel?>()
+                      .firstWhere((g) => g != null, orElse: () => null);
 
-      skillTotals[skill] = (skillTotals[skill] ?? 0) + value;
+                  if (goal == null) return const SizedBox();
 
-      activities.add({'skill': skill, 'value': value, 'date': date});
-    }
-
-    final totalHours = skillTotals.values.fold(0.0, (a, b) => a + b);
-    final streak = _calculateStreak(activities);
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _StatsCard(totalHours: totalHours, streak: streak),
-
-        const SizedBox(height: 20),
-
-        const Text(
-          "Skill Progress",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-
-        const SizedBox(height: 12),
-
-        ...skillTotals.entries.map(
-          (e) => _SkillCard(skill: e.key, total: e.value),
-        ),
-
-        const SizedBox(height: 24),
-
-        const Text(
-          "Recent Activity",
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-
-        const SizedBox(height: 12),
-
-        ...activities.reversed
-            .take(5)
-            .map(
-              (a) => _ActivityTile(
-                skill: a['skill'],
-                value: a['value'],
-                date: a['date'],
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ListTile(
+                      title: Text(
+                        goal.title,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: const Text('Tap to update status'),
+                      trailing: const Icon(Icons.more_vert),
+                      onTap: () => _showStatusSheet(context, goal),
+                    ),
+                  );
+                },
               ),
-            ),
-      ],
+
+              // ================= FILTER =================
+              _FilterPills(
+                filter: _filter,
+                onChanged: (f) => setState(() => _filter = f),
+              ),
+
+              const SizedBox(height: 18),
+
+              // ================= CONTENT =================
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _progressRepo.streamProgress(fromDate),
+                  builder: (_, snap) {
+                    if (!snap.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final docs = snap.data!.docs;
+
+                    final weeklyData = {for (int i = 0; i < 7; i++) i: 0};
+
+                    for (final d in docs) {
+                      final date = (d['createdAt'] as Timestamp)
+                          .toDate()
+                          .toLocal();
+                      weeklyData[date.weekday - 1] =
+                          weeklyData[date.weekday - 1]! + 1;
+                    }
+
+                    return ListView(
+                      children: [
+                        _SectionCard(
+                          title: 'Weekly Progress',
+                          child: WeeklyProgressChart(data: weeklyData),
+                        ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'History',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        if (docs.isEmpty)
+                          const Center(
+                            child: Text(
+                              'No progress yet',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                        ...docs.map(
+                          (d) => _HistoryCard(
+                            title: d['skill'],
+                            date: (d['createdAt'] as Timestamp)
+                                .toDate()
+                                .toString()
+                                .substring(0, 10),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
-  }
-
-  // ---------------- STREAK ----------------
-  int _calculateStreak(List<Map<String, dynamic>> activities) {
-    if (activities.isEmpty) return 0;
-
-    activities.sort((a, b) => b['date'].compareTo(a['date']));
-
-    int streak = 1;
-    DateTime last = activities.first['date'];
-
-    for (int i = 1; i < activities.length; i++) {
-      final current = activities[i]['date'];
-      if (last.difference(current).inDays == 1) {
-        streak++;
-        last = current;
-      } else {
-        break;
-      }
-    }
-
-    return streak;
   }
 }
 
 // ================= UI COMPONENTS =================
 
-class _StatsCard extends StatelessWidget {
-  final double totalHours;
-  final int streak;
-
-  const _StatsCard({required this.totalHours, required this.streak});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.green,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _StatItem(label: "Total Hours", value: totalHours.toStringAsFixed(1)),
-          _StatItem(label: "Current Streak", value: "$streak days"),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatItem extends StatelessWidget {
-  final String label;
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
   final String value;
 
-  const _StatItem({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(color: Colors.white70)),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SkillCard extends StatelessWidget {
-  final String skill;
-  final double total;
-
-  const _SkillCard({required this.skill, required this.total});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            skill,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          LinearProgressIndicator(
-            value: (total / 50).clamp(0, 1),
-            color: Colors.green,
-            backgroundColor: Colors.green.withOpacity(0.2),
-          ),
-          const SizedBox(height: 6),
-          Text("${total.toStringAsFixed(1)} hrs"),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActivityTile extends StatelessWidget {
-  final String skill;
-  final double value;
-  final DateTime date;
-
-  const _ActivityTile({
-    required this.skill,
+  const _StatCard({
+    required this.icon,
+    required this.title,
     required this.value,
-    required this.date,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: const Icon(Icons.check_circle, color: Colors.green),
-      title: Text(skill),
-      subtitle: Text("${value.toStringAsFixed(1)} hrs"),
-      trailing: Text("${date.day}/${date.month}"),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xffEAF8ED),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.green),
+          const SizedBox(height: 8),
+          Text(title, style: const TextStyle(color: Colors.grey)),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const _SectionCard({required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryCard extends StatelessWidget {
+  final String title;
+  final String date;
+
+  const _HistoryCard({required this.title, required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle, color: Colors.green),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(date, style: const TextStyle(color: Colors.grey)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterPills extends StatelessWidget {
+  final TimeFilter filter;
+  final ValueChanged<TimeFilter> onChanged;
+
+  const _FilterPills({required this.filter, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Row(
+        children: TimeFilter.values.map((f) {
+          final selected = f == filter;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(f),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: selected ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Center(
+                  child: Text(
+                    f.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: selected ? Colors.green : Colors.black54,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 }

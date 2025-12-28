@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:growme/core/post_model.dart';
+import 'package:growme/features/auth/domain/models/post_model.dart';
 import 'package:growme/features/auth/data/post_repository.dart';
 
 class PostCard extends StatelessWidget {

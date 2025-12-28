@@ -16,9 +16,17 @@ class AuthStateWidget extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        if (snapshot.hasData) {
-          return const HomeScreen();
+
+        final user = snapshot.data;
+
+        if (user != null) {
+          // 🔥 THIS LINE FIXES EVERYTHING
+          return KeyedSubtree(
+            key: ValueKey(user.uid),
+            child: HomeScreen(userId: user.uid),
+          );
         }
+
         return const AuthScreen();
       },
     );

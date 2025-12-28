@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:growme/core/post_card.dart';
-import 'package:growme/core/post_model.dart';
+import 'package:growme/features/auth/domain/models/post_model.dart';
 import 'package:growme/features/auth/data/post_repository.dart';
 import 'package:growme/features/auth/presentation/create_post_screen.dart';
 import 'package:growme/features/auth/presentation/progress_screen.dart';
@@ -9,7 +9,8 @@ import 'package:growme/features/auth/presentation/updated_goal_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userId;
-  const HomeScreen({super.key, required this.userId});
+  final int initialIndex;
+  const HomeScreen({super.key, required this.userId, this.initialIndex = 0});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -18,7 +19,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final repo = PostRepository();
 
-  int _currentIndex = 0;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex; // ✅ SET FROM PARAM
+  }
 
   // pages for bottom nav (Goals and others are placeholders here)
   List<Widget> get _pages => [

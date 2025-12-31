@@ -2,53 +2,71 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class SocialRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final _firestore = FirebaseFirestore.instance;
+  final _auth = FirebaseAuth.instance;
 
   String get currentUid => _auth.currentUser!.uid;
 
   // FOLLOW
   Future<void> followUser(String targetUid) async {
-    await _firestore
-        .collection("followers")
-        .doc(targetUid)
-        .collection("userFollowers")
-        .doc(currentUid)
-        .set({});
+    final batch = _firestore.batch();
 
-    await _firestore
-        .collection("following")
+    final followingRef = _firestore
+        .collection('users')
         .doc(currentUid)
-        .collection("userFollowing")
+        .collection('following')
+        .doc(targetUid);
+
+    final followersRef = _firestore
+        .collection('users')
         .doc(targetUid)
-        .set({});
+        .collection('followers')
+        .doc(currentUid);
+
+    batch.set(followingRef, {
+      'userId': targetUid,
+      'createdAt': Timestamp.now(),
+    });
+
+    batch.set(followersRef, {
+      'userId': currentUid,
+      'createdAt': Timestamp.now(),
+    });
+
+    await batch.commit();
   }
 
   // UNFOLLOW
   Future<void> unfollowUser(String targetUid) async {
-    await _firestore
-        .collection("followers")
-        .doc(targetUid)
-        .collection("userFollowers")
-        .doc(currentUid)
-        .delete();
+    final batch = _firestore.batch();
 
-    await _firestore
-        .collection("following")
-        .doc(currentUid)
-        .collection("userFollowing")
-        .doc(targetUid)
-        .delete();
+    batch.delete(
+      _firestore
+          .collection('users')
+          .doc(currentUid)
+          .collection('following')
+          .doc(targetUid),
+    );
+
+    batch.delete(
+      _firestore
+          .collection('users')
+          .doc(targetUid)
+          .collection('followers')
+          .doc(currentUid),
+    );
+
+    await batch.commit();
   }
 
-  // CHECK IF FOLLOWING (REAL TIME)
+  // CHECK FOLLOW STATE (REAL TIME)
   Stream<bool> isFollowing(String targetUid) {
     return _firestore
-        .collection("followers")
-        .doc(targetUid)
-        .collection("userFollowers")
+        .collection('users')
         .doc(currentUid)
+        .collection('following')
+        .doc(targetUid)
         .snapshots()
-        .map((snap) => snap.exists);
+        .map((doc) => doc.exists);
   }
 }

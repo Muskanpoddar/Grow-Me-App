@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:growme/core/post_card.dart';
 import 'package:growme/features/auth/domain/models/post_model.dart';
 import 'package:growme/features/auth/data/post_repository.dart';
+import 'package:growme/features/auth/presentation/community_screen.dart';
 import 'package:growme/features/auth/presentation/create_post_screen.dart';
+import 'package:growme/features/auth/presentation/goal_screen.dart';
 import 'package:growme/features/auth/presentation/progress_screen.dart';
 import 'package:growme/features/auth/presentation/setting_screen.dart';
-import 'package:growme/features/auth/presentation/updated_goal_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   final String userId;
@@ -30,9 +32,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // pages for bottom nav (Goals and others are placeholders here)
   List<Widget> get _pages => [
     _HomeFeed(userId: widget.userId),
-    const _GoalsScreen(),
+    const GoalsScreen(),
     const ProgressScreen(),
-    const _CommunityScreen(),
+    const CommunityScreen(),
     const SettingsScreen(),
   ];
 
@@ -156,55 +158,3 @@ Widget _buildHeader() {
 }
 
 // Simple Goals placeholder - tapping the top button navigates to the UpdateGoal screen
-class _GoalsScreen extends StatelessWidget {
-  const _GoalsScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        children: [
-          const SizedBox(height: 10),
-          Row(
-            children: const [
-              SizedBox(width: 15),
-              Text(
-                "Goals",
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xff00CC66),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  'Update Today\'s Goal',
-                  style: TextStyle(fontSize: 16, color: Colors.black),
-                ),
-              ),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CreateGoalScreen()),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CommunityScreen extends StatelessWidget {
-  const _CommunityScreen();
-  @override
-  Widget build(BuildContext c) =>
-      const Center(child: Text('Community screen (placeholder)'));
-}

@@ -16,6 +16,12 @@ class AuthRepository {
   // ----------------------------------------------------
 
   Future<User?> signUpWithEmail(String email, String password) async {
+    // 🔴 VERY IMPORTANT:
+    // Clear any cached Google session BEFORE email signup
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
+
     final cred = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
@@ -26,6 +32,11 @@ class AuthRepository {
   }
 
   Future<User?> signInWithEmail(String email, String password) async {
+    // 🔴 Clear Google cache for email login as well
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
+
     final cred = await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,
@@ -35,14 +46,15 @@ class AuthRepository {
   }
 
   // ----------------------------------------------------
-  // GOOGLE AUTH (FORCED CHOOSER)
+  // GOOGLE AUTH (FORCED CHOOSER, NO AUTO LOGIN)
   // ----------------------------------------------------
 
   Future<User?> signInWithGoogle() async {
-    // ✅ Clears cached account ONLY (safe)
+    // ✅ Force chooser EVERY TIME
     await _googleSignIn.signOut();
 
-    final googleUser = await _googleSignIn.signIn();
+    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
     if (googleUser == null) return null;
 
     final googleAuth = await googleUser.authentication;
@@ -58,16 +70,21 @@ class AuthRepository {
   }
 
   // ----------------------------------------------------
-  // LOGOUT (ONLY PLACE)
+  // LOGOUT (CRITICAL FIX)
   // ----------------------------------------------------
 
   Future<void> logout() async {
+    // ✅ FIRST clear Google session
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
+
+    // ✅ THEN clear Firebase session
     await _auth.signOut();
-    await _googleSignIn.signOut(); // ❌ NO disconnect
   }
 
   // ----------------------------------------------------
-  // FIRESTORE
+  // FIRESTORE USER DOC
   // ----------------------------------------------------
 
   Future<void> _createUserDocument(User? user) async {
@@ -85,7 +102,7 @@ class AuthRepository {
       "username": user.email?.split("@")[0],
       "photoUrl": user.photoURL ?? "",
       "interests": [],
-      "createdAt": DateTime.now(),
+      "createdAt": FieldValue.serverTimestamp(),
     });
   }
 }

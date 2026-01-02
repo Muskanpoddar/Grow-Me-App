@@ -54,7 +54,7 @@ class _ProgressScreenState extends State<ProgressScreen>
       ),
       builder: (_) {
         return Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -62,12 +62,12 @@ class _ProgressScreenState extends State<ProgressScreen>
                 "What's your status?",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
 
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.greenAccent,
-                  minimumSize: const Size(double.infinity, 48),
+                  minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
@@ -76,12 +76,21 @@ class _ProgressScreenState extends State<ProgressScreen>
                   await _goalRepo.completeGoal(goal);
                   Navigator.pop(context);
                 },
-                child: const Text('Mark done'),
+                child: const Text(
+                  'Mark done',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
 
               const SizedBox(height: 12),
 
               OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Still working'),
               ),
@@ -116,9 +125,9 @@ class _ProgressScreenState extends State<ProgressScreen>
     return Scaffold(
       backgroundColor: const Color(0xfff7faf7),
       appBar: AppBar(
-        leading: Icon(
+        leading: const Icon(
           Icons.pie_chart_rounded,
-          size: 30,
+          size: 28,
           color: Color(0xff00CC66),
         ),
         title: const Text(
@@ -132,60 +141,32 @@ class _ProgressScreenState extends State<ProgressScreen>
         opacity: _fade,
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ================= STATS =================
-              StreamBuilder<DocumentSnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('user_stats')
-                    .doc(uid)
-                    .snapshots(),
-                builder: (_, snap) {
-                  final streak = snap.data?.exists == true
-                      ? (snap.data!.data() as Map<String, dynamic>)['streak'] ??
-                            0
-                      : 0;
+          child: StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('user_stats')
+                .doc(uid)
+                .snapshots(),
+            builder: (_, statsSnap) {
+              final streak = statsSnap.data?.exists == true
+                  ? (statsSnap.data!.data()
+                            as Map<String, dynamic>)['streak'] ??
+                        0
+                  : 0;
 
-                  return StreamBuilder<QuerySnapshot>(
-                    stream: _progressRepo.streamProgress(DateTime(2000)),
-                    builder: (_, pSnap) {
-                      final completed = pSnap.data?.docs.length ?? 0;
-
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: _StatCard(
-                              icon: Icons.local_fire_department,
-                              title: 'Current Streak',
-                              value: '$streak Days',
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _StatCard(
-                              icon: Icons.flag,
-                              title: 'Goals Completed',
-                              value: completed.toString(),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              ),
-
-              const SizedBox(height: 18),
-
-              // ================= TODAY GOAL =================
-              StreamBuilder<List<GoalModel>>(
+              return StreamBuilder<List<GoalModel>>(
                 stream: _goalRepo.streamGoalsForUser(uid),
-                builder: (_, snap) {
-                  if (!snap.hasData) return const SizedBox();
+                builder: (_, goalsSnap) {
+                  if (!goalsSnap.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final goals = goalsSnap.data!;
+                  final completedCount = goals
+                      .where((g) => g.status == 'completed')
+                      .length;
 
                   final today = DateTime.now();
-                  final goal = snap.data!
+                  final todayGoal = goals
                       .where(
                         (g) =>
                             g.status == 'active' &&
@@ -194,92 +175,117 @@ class _ProgressScreenState extends State<ProgressScreen>
                       .cast<GoalModel?>()
                       .firstWhere((g) => g != null, orElse: () => null);
 
-                  if (goal == null) return const SizedBox();
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: ListTile(
-                      title: Text(
-                        goal.title,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: const Text('Tap to update status'),
-                      trailing: const Icon(Icons.more_vert),
-                      onTap: () => _showStatusSheet(context, goal),
-                    ),
-                  );
-                },
-              ),
-
-              // ================= FILTER =================
-              _FilterPills(
-                filter: _filter,
-                onChanged: (f) => setState(() => _filter = f),
-              ),
-
-              const SizedBox(height: 18),
-
-              // ================= CONTENT =================
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: _progressRepo.streamProgress(fromDate),
-                  builder: (_, snap) {
-                    if (!snap.hasData) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    final docs = snap.data!.docs;
-
-                    final weeklyData = {for (int i = 0; i < 7; i++) i: 0};
-
-                    for (final d in docs) {
-                      final date = (d['createdAt'] as Timestamp)
-                          .toDate()
-                          .toLocal();
-                      weeklyData[date.weekday - 1] =
-                          weeklyData[date.weekday - 1]! + 1;
-                    }
-
-                    return ListView(
-                      children: [
-                        _SectionCard(
-                          title: 'Weekly Progress',
-                          child: WeeklyProgressChart(data: weeklyData),
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'History',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (docs.isEmpty)
-                          const Center(
-                            child: Text(
-                              'No progress yet',
-                              style: TextStyle(color: Colors.grey),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ================= STATS =================
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _statCard(
+                              icon: Icons.local_fire_department,
+                              title: 'Current Streak',
+                              value: '$streak Days',
                             ),
                           ),
-                        ...docs.map(
-                          (d) => _HistoryCard(
-                            title: d['skill'],
-                            date: (d['createdAt'] as Timestamp)
-                                .toDate()
-                                .toString()
-                                .substring(0, 10),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _statCard(
+                              icon: Icons.flag,
+                              title: 'Goals Completed',
+                              value: completedCount.toString(),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // ================= TODAY GOAL =================
+                      if (todayGoal != null)
+                        Card(
+                          elevation: 2,
+                          margin: const EdgeInsets.only(bottom: 20),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 8,
+                            ),
+                            title: Text(
+                              todayGoal.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: const Text(
+                              'Tap to update status',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                            trailing: const Icon(Icons.more_vert),
+                            onTap: () => _showStatusSheet(context, todayGoal),
                           ),
                         ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
+
+                      _FilterPills(
+                        filter: _filter,
+                        onChanged: (f) => setState(() => _filter = f),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // ================= GRAPH + ACHIEVEMENTS =================
+                      Expanded(
+                        child: StreamBuilder<QuerySnapshot>(
+                          stream: _progressRepo.streamProgress(fromDate),
+                          builder: (_, snap) {
+                            if (!snap.hasData) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+
+                            final docs = snap.data!.docs;
+
+                            if (docs.isEmpty) {
+                              return _emptyProgressState();
+                            }
+
+                            final weeklyData = {
+                              for (int i = 0; i < 7; i++) i: 0,
+                            };
+
+                            for (final d in docs) {
+                              final date = (d['createdAt'] as Timestamp)
+                                  .toDate()
+                                  .toLocal();
+                              weeklyData[date.weekday - 1] =
+                                  weeklyData[date.weekday - 1]! + 1;
+                            }
+
+                            return ListView(
+                              children: [
+                                _SectionCard(
+                                  title: 'Weekly Progress',
+                                  child: WeeklyProgressChart(data: weeklyData),
+                                ),
+                                const SizedBox(height: 24),
+                                _AchievementsRow(
+                                  completedCount: completedCount,
+                                  streak: streak,
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
           ),
         ),
       ),
@@ -289,40 +295,31 @@ class _ProgressScreenState extends State<ProgressScreen>
 
 // ================= UI COMPONENTS =================
 
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String value;
-
-  const _StatCard({
-    required this.icon,
-    required this.title,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xffEAF8ED),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: Colors.green),
-          const SizedBox(height: 8),
-          Text(title, style: const TextStyle(color: Colors.grey)),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
+Widget _statCard({
+  required IconData icon,
+  required String title,
+  required String value,
+}) {
+  return Container(
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: Colors.green.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: Colors.green),
+        const SizedBox(height: 12),
+        Text(title, style: const TextStyle(color: Colors.grey)),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SectionCard extends StatelessWidget {
@@ -334,16 +331,16 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           child,
         ],
       ),
@@ -351,40 +348,33 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-class _HistoryCard extends StatelessWidget {
-  final String title;
-  final String date;
+class _AchievementsRow extends StatelessWidget {
+  final int completedCount;
+  final int streak;
 
-  const _HistoryCard({required this.title, required this.date});
+  const _AchievementsRow({required this.completedCount, required this.streak});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle, color: Colors.green),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(date, style: const TextStyle(color: Colors.grey)),
-              ],
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Achievements',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 14),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _badge('🔥', 'First Step', completedCount >= 1),
+              _badge('🥈', 'Consistent', streak >= 7),
+              _badge('🥇', 'Champion', completedCount >= 30),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -410,7 +400,7 @@ class _FilterPills extends StatelessWidget {
             child: GestureDetector(
               onTap: () => onChanged(f),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
                   color: selected ? Colors.white : Colors.transparent,
                   borderRadius: BorderRadius.circular(20),
@@ -431,4 +421,52 @@ class _FilterPills extends StatelessWidget {
       ),
     );
   }
+}
+
+Widget _emptyProgressState() {
+  return Column(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: const [
+      SizedBox(height: 40),
+      Icon(Icons.insights, size: 64, color: Colors.green),
+      SizedBox(height: 16),
+      Text(
+        'No progress yet',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      SizedBox(height: 8),
+      Text(
+        'Complete your first goal to see progress here',
+        style: TextStyle(color: Colors.grey),
+        textAlign: TextAlign.center,
+      ),
+    ],
+  );
+}
+
+Widget _badge(String emoji, String label, bool unlocked) {
+  return Container(
+    margin: const EdgeInsets.only(right: 14),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    decoration: BoxDecoration(
+      color: unlocked
+          ? Colors.green.withOpacity(0.15)
+          : Colors.grey.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: Column(
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 26)),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: unlocked ? Colors.black : Colors.grey,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
 }

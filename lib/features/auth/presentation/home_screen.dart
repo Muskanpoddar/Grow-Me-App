@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:growme/core/post_card.dart';
-import 'package:growme/features/auth/domain/models/post_model.dart';
 import 'package:growme/features/auth/data/post_repository.dart';
+import 'package:growme/features/auth/domain/models/post_model.dart';
 import 'package:growme/features/auth/presentation/community_screen.dart';
 import 'package:growme/features/auth/presentation/create_post_screen.dart';
 import 'package:growme/features/auth/presentation/goal_screen.dart';
 import 'package:growme/features/auth/presentation/progress_screen.dart';
 import 'package:growme/features/auth/presentation/setting_screen.dart';
 
-
 class HomeScreen extends StatefulWidget {
   final String userId;
   final int initialIndex;
+
   const HomeScreen({super.key, required this.userId, this.initialIndex = 0});
 
   @override
@@ -19,35 +19,21 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final repo = PostRepository();
-
   late int _currentIndex;
 
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex; // ✅ SET FROM PARAM
+    _currentIndex = widget.initialIndex;
   }
 
-  // pages for bottom nav (Goals and others are placeholders here)
   List<Widget> get _pages => [
-    _HomeFeed(userId: widget.userId),
+    _HomeFeed(currentUserId: widget.userId),
     const GoalsScreen(),
     const ProgressScreen(),
     const CommunityScreen(),
     const SettingsScreen(),
   ];
-
-  @override
-  void didUpdateWidget(covariant HomeScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (oldWidget.userId != widget.userId) {
-      setState(() {
-        _currentIndex = 0;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,16 +42,15 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: _currentIndex == 0
           ? FloatingActionButton(
               backgroundColor: const Color(0xff00CC66),
-              child: const Icon(Icons.add, color: Colors.black),
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const CreatePostScreen()),
                 );
               },
+              child: const Icon(Icons.add, color: Colors.black),
             )
           : null,
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         selectedItemColor: const Color(0xff00CC66),
@@ -90,22 +75,21 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HomeFeed extends StatelessWidget {
-  final String userId;
+  final String currentUserId;
+  final PostRepository repo = PostRepository();
 
-  const _HomeFeed({required this.userId});
+  _HomeFeed({required this.currentUserId});
 
   @override
   Widget build(BuildContext context) {
-    final repo = PostRepository();
-
     return SafeArea(
       child: Column(
         children: [
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           _buildHeader(),
           Expanded(
             child: StreamBuilder<List<PostModel>>(
-              stream: repo.streamPosts(userId), // ✅ FIXED
+              stream: repo.streamHomeFeed(),
               builder: (context, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -115,7 +99,7 @@ class _HomeFeed extends StatelessWidget {
                 if (posts.isEmpty) {
                   return const Center(
                     child: Text(
-                      "No posts yet.",
+                      'No posts yet.',
                       style: TextStyle(fontSize: 18),
                     ),
                   );
@@ -130,7 +114,7 @@ class _HomeFeed extends StatelessWidget {
                   itemBuilder: (context, index) {
                     return PostCard(
                       post: posts[index],
-                      currentUserId: userId, // ✅ use passed userId
+                      currentUserId: currentUserId,
                     );
                   },
                 );
@@ -156,5 +140,3 @@ Widget _buildHeader() {
     ],
   );
 }
-
-// Simple Goals placeholder - tapping the top button navigates to the UpdateGoal screen

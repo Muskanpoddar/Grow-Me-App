@@ -241,69 +241,15 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
                     onTap: () => Navigator.pop(context),
                     child: const Text('Cancel', style: TextStyle(fontSize: 18)),
                   ),
+
                   const Text(
                     'New Daily Goal',
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  GestureDetector(
-                    onTap: _onSetGoalPressed,
-                    child: const Text(
-                      'Post',
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 18),
 
-              // One goal per day card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: mainGreen.withOpacity(0.15)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: mainGreen.withOpacity(0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.check_circle_outline,
-                        color: Colors.green,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text(
-                            'One goal per day',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'You can only have one active goal per day.',
-                            style: TextStyle(color: Colors.green),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
               const Text(
                 'Goal Title',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),

@@ -9,55 +9,42 @@ class FollowButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentUid = FirebaseAuth.instance.currentUser!.uid;
-
     if (currentUid == targetUserId) return const SizedBox();
 
-    final followingQuery = FirebaseFirestore.instance
+    final followingDoc = FirebaseFirestore.instance
         .collection('following')
-        .where('userId', isEqualTo: currentUid)
-        .where('followingId', isEqualTo: targetUserId);
+        .doc('${currentUid}_$targetUserId');
 
-    return StreamBuilder<QuerySnapshot>(
-      stream: followingQuery.snapshots(),
+    return StreamBuilder<DocumentSnapshot>(
+      stream: followingDoc.snapshots(),
       builder: (context, snap) {
-        final isFollowing = snap.data?.docs.isNotEmpty == true;
+        final isFollowing =
+            snap.connectionState == ConnectionState.active &&
+            snap.data?.exists == true;
 
         return GestureDetector(
           onTap: () async {
             final batch = FirebaseFirestore.instance.batch();
 
+            final followerDoc = FirebaseFirestore.instance
+                .collection('followers')
+                .doc('${targetUserId}_$currentUid');
+
             if (isFollowing) {
-              for (final doc in snap.data!.docs) {
-                batch.delete(doc.reference);
-              }
-
-              final followersSnap = await FirebaseFirestore.instance
-                  .collection('followers')
-                  .where('userId', isEqualTo: targetUserId)
-                  .where('followerId', isEqualTo: currentUid)
-                  .get();
-
-              for (final doc in followersSnap.docs) {
-                batch.delete(doc.reference);
-              }
+              batch.delete(followingDoc);
+              batch.delete(followerDoc);
             } else {
-              batch.set(
-                FirebaseFirestore.instance.collection('following').doc(),
-                {
-                  'userId': currentUid,
-                  'followingId': targetUserId,
-                  'createdAt': FieldValue.serverTimestamp(),
-                },
-              );
+              batch.set(followingDoc, {
+                'userId': currentUid,
+                'followingId': targetUserId,
+                'createdAt': FieldValue.serverTimestamp(),
+              });
 
-              batch.set(
-                FirebaseFirestore.instance.collection('followers').doc(),
-                {
-                  'userId': targetUserId,
-                  'followerId': currentUid,
-                  'createdAt': FieldValue.serverTimestamp(),
-                },
-              );
+              batch.set(followerDoc, {
+                'userId': targetUserId,
+                'followerId': currentUid,
+                'createdAt': FieldValue.serverTimestamp(),
+              });
             }
 
             await batch.commit();
@@ -65,15 +52,13 @@ class FollowButton extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: isFollowing
-                  ? Colors.grey.shade300
-                  : const Color(0xff00CC66),
+              color: isFollowing ? Colors.grey.shade300 : Colors.green,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               isFollowing ? 'Following' : 'Follow',
-              style: TextStyle(
-                color: isFollowing ? Colors.black : Colors.white,
+              style: const TextStyle(
+                color: Colors.white,
                 fontWeight: FontWeight.bold,
               ),
             ),

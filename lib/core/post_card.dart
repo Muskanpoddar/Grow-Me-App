@@ -10,16 +10,16 @@ class PostCard extends StatelessWidget {
   final String currentUserId;
   final PostRepository repo = PostRepository();
 
-  PostCard({required this.post, required this.currentUserId, super.key});
+  PostCard({super.key, required this.post, required this.currentUserId});
 
   @override
   Widget build(BuildContext context) {
     final liked = post.likes.contains(currentUserId);
     final likeCount = post.likes.length;
+    final isOwner = post.userId == currentUserId;
 
-    final userLabel = post.userId.length >= 6
-        ? post.userId.substring(0, 6)
-        : post.userId;
+    // ✅ FIX username display
+    final displayName = post.username.isNotEmpty ? post.username : post.name;
 
     return Card(
       elevation: 1.5,
@@ -35,6 +35,7 @@ class PostCard extends StatelessWidget {
               children: [
                 const CircleAvatar(child: Icon(Icons.person)),
                 const SizedBox(width: 8),
+
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
@@ -47,7 +48,7 @@ class PostCard extends StatelessWidget {
                       );
                     },
                     child: Text(
-                      'User $userLabel',
+                      displayName,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
@@ -56,7 +57,11 @@ class PostCard extends StatelessWidget {
                   ),
                 ),
 
-                FollowButton(targetUserId: post.userId),
+                // ✅ OWN POST → 3 DOT MENU
+                if (isOwner) _PostMenu(post: post, repo: repo),
+
+                // ✅ OTHER USER → FOLLOW BUTTON
+                if (!isOwner) FollowButton(targetUserId: post.userId),
               ],
             ),
 
@@ -90,16 +95,13 @@ class PostCard extends StatelessWidget {
             if (post.imageUrl != null)
               GestureDetector(
                 onTap: () => _openImage(context, post.imageUrl!),
-                child: Hero(
-                  tag: post.imageUrl!,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: Image.network(
-                      post.imageUrl!,
-                      height: 220,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.network(
+                    post.imageUrl!,
+                    height: 220,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
@@ -112,39 +114,48 @@ class PostCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    GestureDetector(
-                      onTap: () =>
-                          repo.toggleLike(postId: post.id, uid: currentUserId),
-                      child: Row(
-                        children: [
-                          Icon(
-                            liked
-                                ? Icons.celebration
-                                : Icons.celebration_outlined,
-                            color: const Color(0xff00CC66),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(_likeLabel(likeCount)),
-                        ],
+                    // 👍 LIKE (respect hideLikes)
+                    if (!post.hideLikes)
+                      GestureDetector(
+                        onTap: () => repo.toggleLike(
+                          postId: post.id,
+                          uid: currentUserId,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              liked
+                                  ? Icons.celebration
+                                  : Icons.celebration_outlined,
+                              color: const Color(0xff00CC66),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(_likeLabel(likeCount)),
+                          ],
+                        ),
                       ),
-                    ),
+
                     const SizedBox(width: 20),
-                    GestureDetector(
-                      onTap: () => Navigator.pushNamed(
-                        context,
-                        '/comments',
-                        arguments: {'postId': post.id},
+
+                    // 💬 COMMENT (respect hideComments)
+                    if (!post.hideComments)
+                      GestureDetector(
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          '/comments',
+                          arguments: {'postId': post.id},
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.comment, color: Color(0xff00CC66)),
+                            SizedBox(width: 6),
+                            Text('Comment'),
+                          ],
+                        ),
                       ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.comment, color: Color(0xff00CC66)),
-                          SizedBox(width: 6),
-                          Text('Comment'),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
+
                 IconButton(
                   onPressed: () => _share(post.id),
                   icon: const Icon(Icons.share, color: Color(0xff00CC66)),
@@ -178,6 +189,46 @@ class PostCard extends StatelessWidget {
   }
 }
 
+// ================= 3 DOT MENU =================
+
+class _PostMenu extends StatelessWidget {
+  final PostModel post;
+  final PostRepository repo;
+
+  const _PostMenu({required this.post, required this.repo});
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton(
+      icon: const Icon(Icons.more_vert),
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          child: const Text('Delete'),
+          onTap: () => repo.deletePost(post.id),
+        ),
+        PopupMenuItem(
+          child: Text(post.hideLikes ? 'Show likes' : 'Hide likes'),
+          onTap: () => repo.toggleVisibility(
+            postId: post.id,
+            field: 'hideLikes',
+            value: !post.hideLikes,
+          ),
+        ),
+        PopupMenuItem(
+          child: Text(post.hideComments ? 'Show comments' : 'Hide comments'),
+          onTap: () => repo.toggleVisibility(
+            postId: post.id,
+            field: 'hideComments',
+            value: !post.hideComments,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ================= EXPANDABLE CAPTION =================
+
 class _ExpandableCaption extends StatefulWidget {
   final String text;
   const _ExpandableCaption({required this.text});
@@ -207,6 +258,8 @@ class _ExpandableCaptionState extends State<_ExpandableCaption> {
   }
 }
 
+// ================= FULL IMAGE VIEW =================
+
 class _FullImageView extends StatelessWidget {
   final String imageUrl;
   const _FullImageView({required this.imageUrl});
@@ -219,12 +272,7 @@ class _FullImageView extends StatelessWidget {
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Center(
-        child: Hero(
-          tag: imageUrl,
-          child: InteractiveViewer(child: Image.network(imageUrl)),
-        ),
-      ),
+      body: Center(child: InteractiveViewer(child: Image.network(imageUrl))),
     );
   }
 }

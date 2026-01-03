@@ -17,6 +17,10 @@ dependencies:
   image_picker: ^1.0.1
   cloudinary_public: ^0.23.1
   intl: ^0.20.2
+  fl_chart: ^1.1.1
+  share_plus: ^11.0.0
+  share_plus_platform_interface: ^6.1.0
+  rxdart: ^0.28.0
 
 dev_dependencies:
   flutter_test:

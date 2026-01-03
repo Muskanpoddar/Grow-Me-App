@@ -412,42 +412,48 @@ class _AuthScreenState extends State<AuthScreen> {
     if (!mounted) return;
     setState(() => loading = true);
 
+    User? firebaseUser;
+
     try {
-      final user = await _authRepo.signUpWithEmail(
+      firebaseUser = await _authRepo.signUpWithEmail(
         emailCtrl.text.trim(),
         passwordCtrl.text.trim(),
       );
 
-      if (user == null) throw Exception("User creation failed");
+      if (firebaseUser == null) {
+        throw Exception("User creation failed");
+      }
 
       String? photoUrl;
-
       if (_profileImageFile != null) {
         photoUrl = await cloudinaryService.uploadImage(_profileImageFile!);
       }
 
-      if (!mounted) return;
+      final username = usernameCtrl.text.trim();
+      final usernameLower = username.toLowerCase();
 
       final appUser = AppUser(
-        uid: user.uid,
+        uid: firebaseUser.uid,
         name: nameCtrl.text.trim(),
-        username: usernameCtrl.text.trim(),
         email: emailCtrl.text.trim(),
+        username: username,
+        usernameLower: usernameLower,
         photoUrl: photoUrl,
         interests: selectedInterests,
       );
 
       await _userRepo.createUser(appUser);
     } catch (e) {
-      // 🔥 rollback partially created auth user
-      await FirebaseAuth.instance.currentUser?.delete();
+      // 🔥 SAFE rollback
+      try {
+        await firebaseUser?.delete();
+      } catch (_) {}
+
       await FirebaseAuth.instance.signOut();
 
-      if (!mounted) return;
-      _showError(e);
+      if (mounted) _showError(e);
     } finally {
-      if (!mounted) return;
-      setState(() => loading = false);
+      if (mounted) setState(() => loading = false);
     }
   }
 
@@ -459,32 +465,31 @@ class _AuthScreenState extends State<AuthScreen> {
       await GoogleSignIn().signOut();
       final user = await _authRepo.signInWithGoogle();
 
-      if (user == null) {
-        if (!mounted) return;
-        setState(() => loading = false);
-        return;
-      }
+      if (user == null) return;
 
       final existing = await _userRepo.getUser(user.uid);
+      if (existing != null) return;
 
-      if (existing == null) {
-        await _userRepo.createUser(
-          AppUser(
-            uid: user.uid,
-            name: user.displayName ?? "",
-            username: user.email?.split('@').first ?? "",
-            email: user.email ?? "",
-            photoUrl: user.photoURL,
-            interests: [],
-          ),
-        );
-      }
+      final rawUsername = user.email?.split('@').first ?? 'user';
+      final safeUsername = rawUsername
+          .replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '')
+          .toLowerCase();
+
+      final appUser = AppUser(
+        uid: user.uid,
+        name: user.displayName ?? '',
+        email: user.email ?? '',
+        username: safeUsername,
+        usernameLower: safeUsername,
+        photoUrl: user.photoURL,
+        interests: const [],
+      );
+
+      await _userRepo.createUser(appUser);
     } catch (e) {
-      if (!mounted) return;
-      _showError(e);
+      if (mounted) _showError(e);
     } finally {
-      if (!mounted) return;
-      setState(() => loading = false);
+      if (mounted) setState(() => loading = false);
     }
   }
 }

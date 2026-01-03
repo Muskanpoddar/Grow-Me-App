@@ -1,39 +1,46 @@
 import 'package:flutter/material.dart';
-import 'package:growme/features/auth/presentation/community_header.dart';
-import 'package:growme/features/auth/presentation/followers_list.dart';
-import 'package:growme/features/auth/presentation/following_list.dart';
+import 'package:growme/features/auth/presentation/my_posts.dart';
 
-class CommunityScreen extends StatefulWidget {
+import 'community_header.dart';
+import 'followers_list.dart';
+import 'following_list.dart';
+
+class CommunityScreen extends StatelessWidget {
   const CommunityScreen({super.key});
 
-  @override
-  State<CommunityScreen> createState() => _CommunityScreenState();
-}
-
-class _CommunityScreenState extends State<CommunityScreen> {
-  bool showFollowing = true;
+  static const green = Color(0xff00C853);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xfff7faf7),
       appBar: AppBar(
-        title: const Text('Community'),
-        elevation: 0,
         backgroundColor: Colors.white,
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: Icon(Icons.search),
-          ),
-        ],
+        elevation: 0,
+        title: Row(
+          children: const [
+            Icon(Icons.people_alt_rounded, color: green, size: 26),
+            SizedBox(width: 8),
+            Text(
+              'Community',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
       ),
+
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // PROFILE HEADER
           const CommunityHeader(),
 
-          // FOLLOW / FOLLOWERS SWITCH
+          const SizedBox(height: 8),
+
+          // FOLLOW / FOLLOWING BUTTONS (NAVIGATION ONLY)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
@@ -44,12 +51,30 @@ class _CommunityScreenState extends State<CommunityScreen> {
               ),
               child: Row(
                 children: [
-                  _tab('Following', showFollowing, () {
-                    setState(() => showFollowing = true);
-                  }),
-                  _tab('Followers', !showFollowing, () {
-                    setState(() => showFollowing = false);
-                  }),
+                  _navButton(
+                    context,
+                    label: 'Following',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const FollowingList(),
+                        ),
+                      );
+                    },
+                  ),
+                  _navButton(
+                    context,
+                    label: 'Followers',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const FollowersList(),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -57,16 +82,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
           const SizedBox(height: 12),
 
-          Expanded(
-            child: showFollowing
-                ? const FollowingList()
-                : const FollowersList(),
-          ),
+          // 🔥 ALWAYS SHOW YOUR POSTS
+          Expanded(child: MyPosts()),
         ],
       ),
 
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.greenAccent,
+        backgroundColor: green,
         onPressed: () {
           Navigator.pushNamed(context, '/userSearch');
         },
@@ -75,22 +97,27 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
-  Widget _tab(String label, bool active, VoidCallback onTap) {
+  static Widget _navButton(
+    BuildContext context, {
+    required String label,
+    required VoidCallback onTap,
+  }) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          margin: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
-            color: active ? Colors.greenAccent : Colors.transparent,
+            color: green,
             borderRadius: BorderRadius.circular(24),
           ),
           child: Center(
             child: Text(
               label,
-              style: TextStyle(
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                color: active ? Colors.black : Colors.grey,
+                color: Colors.white,
               ),
             ),
           ),

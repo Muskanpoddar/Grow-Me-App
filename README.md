@@ -3,7 +3,6 @@
 **Grow Me** is a personal growth and habit-tracking mobile application built using **Flutter** and **Firebase**.  
 It helps users set daily goals, track progress, stay consistent, and connect with others through a simple community system.
 
----
 
 ## 🚀 Features
 
@@ -50,7 +49,7 @@ It helps users set daily goals, track progress, stay consistent, and connect wit
 - About App
 - Logout (secure session handling)
 
----
+
 
 ## 🛠 Tech Stack
 
@@ -70,21 +69,7 @@ It helps users set daily goals, track progress, stay consistent, and connect wit
 - Clean separation of UI, data & logic
 - Stream-based real-time updates
 
----
 
-## 📂 Project Structure (Simplified)
-lib/
-├── core/
-│ ├── services/
-│ └── widgets/
-├── features/
-│ ├── auth/
-│ ├── goals/
-│ ├── posts/
-│ └── community/
-├── main.dart
-
----
 
 ## 🔐 Firestore Rules (Highlights)
 
@@ -93,7 +78,7 @@ lib/
 - Followers/Following secured per user
 - Notification settings protected by userId
 
----
+
 
 ## 📱 Installation (APK)
 
@@ -101,6 +86,6 @@ lib/
 ```bash
 flutter build apk --release
 ```
+### APK Path
 ```
-APK Path
 build/app/outputs/flutter-apk/app-release.apk

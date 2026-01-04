@@ -10,7 +10,9 @@ class CommunityHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const SizedBox();
+    final uid = user.uid;
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance

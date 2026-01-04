@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class SecurityScreen extends StatefulWidget {
@@ -214,9 +216,12 @@ class _SecurityScreenState extends State<SecurityScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Clear Session'),
+        title: const Text(
+          'Delete Account',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: const Text(
-          'This will clear local session data from the device.',
+          'This will permanently delete your account, posts, goals, and all data.\n\nThis action cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -224,16 +229,151 @@ class _SecurityScreenState extends State<SecurityScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('Session cleared')));
+              await _deleteEverything();
             },
-            child: const Text('Clear', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _deleteEverything() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final uid = user.uid;
+    final db = FirebaseFirestore.instance;
+
+    try {
+      // 🔥 DELETE POSTS + COMMENTS
+      final postsSnap = await db
+          .collection('posts')
+          .where('userId', isEqualTo: uid)
+          .get();
+
+      for (final post in postsSnap.docs) {
+        final comments = await post.reference.collection('comments').get();
+        for (final c in comments.docs) {
+          await c.reference.delete();
+        }
+        await post.reference.delete();
+      }
+
+      // 🔥 DELETE GOALS
+      final goalsSnap = await db
+          .collection('goals')
+          .where('userId', isEqualTo: uid)
+          .get();
+      for (final g in goalsSnap.docs) {
+        await g.reference.delete();
+      }
+
+      // 🔥 DELETE PROGRESS
+      final progressSnap = await db
+          .collection('progress_goals')
+          .where('userId', isEqualTo: uid)
+          .get();
+      for (final p in progressSnap.docs) {
+        await p.reference.delete();
+      }
+
+      // 🔥 DELETE FOLLOWERS / FOLLOWING
+      final followersSnap = await db
+          .collection('followers')
+          .where('userId', isEqualTo: uid)
+          .get();
+      for (final f in followersSnap.docs) {
+        await f.reference.delete();
+      }
+
+      final followingSnap = await db
+          .collection('following')
+          .where('userId', isEqualTo: uid)
+          .get();
+      for (final f in followingSnap.docs) {
+        await f.reference.delete();
+      }
+
+      // 🔥 DELETE USER STATS
+      await db.collection('user_stats').doc(uid).delete();
+
+      // 🔥 DELETE USER PROFILE
+      await db.collection('users').doc(uid).delete();
+
+      // 🔥 DELETE AUTH ACCOUNT
+      await user.delete();
+    } catch (e) {
+      debugPrint('Delete account error: $e');
+    }
+  }
+
+  Future<void> deleteAccountCompletely() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final uid = user.uid;
+    final firestore = FirebaseFirestore.instance;
+
+    try {
+      // 1️⃣ POSTS
+      final posts = await firestore
+          .collection('posts')
+          .where('userId', isEqualTo: uid)
+          .get();
+      for (final d in posts.docs) {
+        await d.reference.delete();
+      }
+
+      // 2️⃣ GOALS
+      final goals = await firestore
+          .collection('goals')
+          .where('userId', isEqualTo: uid)
+          .get();
+      for (final d in goals.docs) {
+        await d.reference.delete();
+      }
+
+      // 3️⃣ PROGRESS
+      final progress = await firestore
+          .collection('progress_goals')
+          .where('userId', isEqualTo: uid)
+          .get();
+      for (final d in progress.docs) {
+        await d.reference.delete();
+      }
+
+      // 4️⃣ FOLLOWERS (where user is being followed)
+      final followers = await firestore
+          .collection('followers')
+          .where('userId', isEqualTo: uid)
+          .get();
+      for (final d in followers.docs) {
+        await d.reference.delete();
+      }
+
+      // 5️⃣ FOLLOWING (where user follows others)
+      final following = await firestore
+          .collection('following')
+          .where('userId', isEqualTo: uid)
+          .get();
+      for (final d in following.docs) {
+        await d.reference.delete();
+      }
+
+      // 6️⃣ USER STATS
+      await firestore.collection('user_stats').doc(uid).delete();
+
+      // 7️⃣ USER PROFILE
+      await firestore.collection('users').doc(uid).delete();
+
+      // 8️⃣ FINALLY DELETE AUTH ACCOUNT
+      await user.delete();
+    } catch (e) {
+      debugPrint('Delete account error: $e');
+      rethrow;
+    }
   }
 }

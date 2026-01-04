@@ -33,7 +33,17 @@ class PostCard extends StatelessWidget {
             // ================= HEADER =================
             Row(
               children: [
-                const CircleAvatar(child: Icon(Icons.person)),
+                CircleAvatar(
+                  radius: 22,
+                  backgroundImage:
+                      post.photoUrl != null && post.photoUrl!.isNotEmpty
+                      ? NetworkImage(post.photoUrl!)
+                      : null,
+                  child: post.photoUrl == null || post.photoUrl!.isEmpty
+                      ? const Icon(Icons.person)
+                      : null,
+                ),
+
                 const SizedBox(width: 8),
 
                 Expanded(
